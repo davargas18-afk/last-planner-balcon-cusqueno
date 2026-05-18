@@ -9,7 +9,7 @@ import {
   FileText, BarChart3, Activity, Layers, ChevronRight, RotateCcw, ArrowUp,
   ArrowDown, Minus, Hammer, Ruler, Eye, Edit2, Trash2, Check, Lock, Unlock,
   CalendarDays, ClipboardCheck, GitCommit, FileSignature, XCircle, PenSquare,
-  ChevronDown, Printer, Upload, Download, Image, Camera
+  ChevronDown, Printer, Upload, Download, Image, Camera, MessageSquare, HardHat
 } from 'lucide-react';
 
 // ============================================================================
@@ -2411,6 +2411,76 @@ const ValorGanadoView = ({ acMonthly, setAcMonthly }) => {
         </div>
       </Card>
 
+      {/* COMPARATIVO DE VALORIZACIÓN */}
+      <Card noPad>
+        <div className="p-5 border-b border-stone-200">
+          <SectionTitle icon={BarChart3} sub="Valorización mensual acumulada: Planeado vs Ganado vs Costo Real">Comparativo de Valorización por Mes</SectionTitle>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-stone-50 border-b border-stone-200">
+                <th className="text-left py-3 px-4 text-[11px] font-semibold text-stone-600 uppercase tracking-wider">Mes</th>
+                <th className="text-right py-3 px-4 text-[11px] font-semibold text-stone-600 uppercase tracking-wider">PV Planeado</th>
+                <th className="text-right py-3 px-4 text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">EV Ganado</th>
+                <th className="text-right py-3 px-4 text-[11px] font-semibold text-red-600 uppercase tracking-wider">AC Real</th>
+                <th className="text-right py-3 px-4 text-[11px] font-semibold text-stone-600 uppercase tracking-wider">SV (Plazo)</th>
+                <th className="text-right py-3 px-4 text-[11px] font-semibold text-stone-600 uppercase tracking-wider">CV (Costo)</th>
+                <th className="text-right py-3 px-4 text-[11px] font-semibold text-stone-600 uppercase tracking-wider">% Avance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evmData.map((row, i) => {
+                const pv = row.PV || 0;
+                const ev = row.EV;
+                const ac = row.AC;
+                const sv = ev != null ? ev - pv : null;
+                const cv = ev != null && ac != null ? ev - ac : null;
+                const pct = ev != null && BAC > 0 ? ev / BAC : null;
+                const isCurrent = i === currentIdx;
+                return (
+                  <tr key={row.mes} className={`border-b border-stone-100 hover:bg-stone-50 ${isCurrent ? 'bg-amber-50/50' : ''}`}>
+                    <td className="py-3 px-4 font-semibold text-stone-900">
+                      {row.mes} 2026 {isCurrent && <span className="ml-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded uppercase">HOY</span>}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-stone-600">{formatCurrency(pv)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-700">{ev != null ? formatCurrency(ev) : '—'}</td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-red-600">{ac != null ? formatCurrency(ac) : '—'}</td>
+                    <td className="py-3 px-4 text-right font-mono text-xs" style={{ color: sv == null ? '#9CA3AF' : sv >= 0 ? COLORS.verde.solid : COLORS.rojo.solid }}>
+                      {sv == null ? '—' : (sv >= 0 ? '+' : '') + formatCurrency(sv)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-xs" style={{ color: cv == null ? '#9CA3AF' : cv >= 0 ? COLORS.verde.solid : COLORS.rojo.solid }}>
+                      {cv == null ? '—' : (cv >= 0 ? '+' : '') + formatCurrency(cv)}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {pct != null ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="h-1.5 w-16 bg-stone-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, pct * 100)}%` }} />
+                          </div>
+                          <span className="font-mono text-xs font-semibold text-stone-700">{(pct * 100).toFixed(1)}%</span>
+                        </div>
+                      ) : <span className="text-stone-400 text-xs">—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-stone-100 border-t-2 border-stone-300 font-semibold">
+                <td className="py-3 px-4 text-xs text-stone-700 uppercase tracking-wider">BAC Total</td>
+                <td className="py-3 px-4 text-right font-mono text-stone-900">{formatCurrency(BAC)}</td>
+                <td className="py-3 px-4 text-right font-mono text-emerald-700">{formatCurrency(EV)}</td>
+                <td className="py-3 px-4 text-right font-mono text-red-600">{formatCurrency(AC)}</td>
+                <td className="py-3 px-4 text-right font-mono text-xs" style={{ color: SV >= 0 ? COLORS.verde.solid : COLORS.rojo.solid }}>{(SV >= 0 ? '+' : '') + formatCurrency(SV)}</td>
+                <td className="py-3 px-4 text-right font-mono text-xs" style={{ color: CV >= 0 ? COLORS.verde.solid : COLORS.rojo.solid }}>{(CV >= 0 ? '+' : '') + formatCurrency(CV)}</td>
+                <td className="py-3 px-4 text-right font-mono font-bold text-stone-900">{(EV / BAC * 100).toFixed(1)}%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </Card>
+
       {/* TOP PARTIDAS CRITICAS */}
       <Card noPad>
         <div className="p-5 border-b border-stone-200">
@@ -2449,6 +2519,514 @@ const ValorGanadoView = ({ acMonthly, setAcMonthly }) => {
 const PartidasView = ValorGanadoView; // alias for backward compatibility
 
 // ============================================================================
+// LOOKAHEAD VIEW
+// ============================================================================
+const LookaheadView = ({ packages, programacion, restrictions, totalWeeks }) => {
+  const [horizonte, setHorizonte] = useState(4);
+  const semanas = useMemo(() =>
+    Array.from({ length: horizonte }, (_, i) => CURRENT_WEEK + i).filter(w => w <= totalWeeks),
+    [horizonte, totalWeeks]
+  );
+  const getActsForWeek = (w) => {
+    const { start, end } = getWeekDates(w);
+    return packages.filter(p => {
+      const hasProg = (programacion[p.id]?.[w]?.prog || 0) > 0;
+      const inRange = new Date(p.inicio) <= end && new Date(p.fin) >= start;
+      return hasProg || inRange;
+    });
+  };
+  const getActiveRestrs = (w) => restrictions.filter(r => r.estado !== 'LEVANTADA' && r.semana <= w);
+  const getBlockedFrentes = (w) => { const s = new Set(); getActiveRestrs(w).forEach(r => { if (r.frente && r.frente !== '—') s.add(r.frente); }); return s; };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <SectionTitle icon={Eye} sub="Planificación anticipada con semáforo de restricciones — herramienta central del Last Planner">Lookahead Plan</SectionTitle>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-stone-600">Horizonte:</span>
+          {[3,4,5,6].map(n => (
+            <button key={n} onClick={() => setHorizonte(n)} className={`px-3 py-1.5 text-sm rounded-md font-medium ${horizonte===n ? 'bg-stone-900 text-white' : 'border border-stone-200 text-stone-600 hover:bg-stone-50'}`}>{n} sem</button>
+          ))}
+        </div>
+      </div>
+      {semanas.map(w => {
+        const acts = getActsForWeek(w);
+        const blocked = getBlockedFrentes(w);
+        const restrs = getActiveRestrs(w);
+        const { start, end } = getWeekDates(w);
+        const isCur = w === CURRENT_WEEK;
+        return (
+          <Card key={w} noPad>
+            <div className={`p-4 border-b flex items-center justify-between ${isCur ? 'bg-amber-50 border-amber-200' : 'bg-stone-50 border-stone-200'}`}>
+              <div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${isCur ? 'text-amber-700' : 'text-stone-500'}`}>{isCur ? 'SEMANA ACTUAL' : `+${w - CURRENT_WEEK} semana${w - CURRENT_WEEK > 1 ? 's' : ''}`}</span>
+                <p className="text-xl font-bold text-stone-900 font-mono">Semana {w}</p>
+                <p className="text-xs text-stone-500">{fmtFullDate(isoDate(start))} → {fmtFullDate(isoDate(end))}</p>
+              </div>
+              <div className="flex gap-4 text-center">
+                <div><p className="text-2xl font-bold font-mono text-stone-900">{acts.length}</p><p className="text-[10px] text-stone-500 uppercase">actividades</p></div>
+                <div><p className="text-2xl font-bold font-mono text-red-600">{restrs.length}</p><p className="text-[10px] text-stone-500 uppercase">restricciones</p></div>
+              </div>
+            </div>
+            {acts.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-stone-100 bg-stone-50/50">
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Partida</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Frente</th>
+                    <th className="text-left py-2 px-3 text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Responsable</th>
+                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Prog.</th>
+                    <th className="text-center py-2 px-3 text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Estado</th>
+                  </tr></thead>
+                  <tbody>
+                    {acts.map(p => {
+                      const prog = programacion[p.id]?.[w]?.prog || 0;
+                      const bloq = blocked.has(p.frente);
+                      return (
+                        <tr key={p.id} className={`border-b border-stone-50 hover:bg-stone-50 ${bloq ? 'border-l-2 border-l-red-400' : ''}`}>
+                          <td className="py-2 px-3"><p className="font-medium text-stone-900">{p.desc.slice(0,55)}{p.desc.length>55?'…':''}</p><p className="text-stone-400 font-mono text-[10px]">{p.item}</p></td>
+                          <td className="py-2 px-3 text-stone-600">{FRENTE_LABELS[p.frente] || p.frente}</td>
+                          <td className="py-2 px-3 text-stone-600">{p.responsable}</td>
+                          <td className="py-2 px-3 text-right font-mono font-semibold text-stone-700">{prog > 0 ? `${prog} ${p.und}` : '—'}</td>
+                          <td className="py-2 px-3 text-center">
+                            {bloq
+                              ? <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-[10px] font-semibold"><AlertTriangle className="w-3 h-3"/>Restricción</span>
+                              : <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-3 h-3"/>Libre</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : <div className="p-6 text-center text-stone-400 text-sm">No hay actividades programadas para esta semana</div>}
+            {restrs.length > 0 && (
+              <div className="p-3 bg-red-50 border-t border-red-200">
+                <p className="text-[10px] font-bold text-red-800 uppercase tracking-wider mb-1.5">Restricciones activas que afectan esta semana:</p>
+                <div className="space-y-1">
+                  {restrs.slice(0,4).map(r => (
+                    <p key={r.id} className="text-xs text-red-700 flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.impacto==='Alto'?'bg-red-600':r.impacto==='Medio'?'bg-amber-500':'bg-blue-400'}`}/>
+                      <span className="font-medium">[{r.categoria}]</span> {r.desc.slice(0,70)}{r.desc.length>70?'…':''}
+                      <span className="ml-auto font-mono text-[10px] text-red-600 flex-shrink-0">{r.fechaCompromiso}</span>
+                    </p>
+                  ))}
+                  {restrs.length > 4 && <p className="text-xs text-red-500">+ {restrs.length - 4} más...</p>}
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================================
+// INFORME SEMANAL VIEW
+// ============================================================================
+const InformeSemanalView = ({ packages, weeklyPlans, ppcHistory, restrictions, programacion }) => {
+  const [semana, setSemana] = useState(CURRENT_WEEK);
+  const plan = weeklyPlans[semana];
+  const ppcEntry = ppcHistory.find(p => p.week === semana);
+  const cumplidos = plan?.commitments.filter(c => c.result === 'CUMPLIDO').length || 0;
+  const total = plan?.commitments.length || 0;
+  const ppc = ppcEntry ? ppcEntry.cumplido / ppcEntry.programado : (total > 0 ? cumplidos / total : 0);
+  const { start, end } = getWeekDates(semana);
+  const activeRestrs = restrictions.filter(r => r.estado !== 'LEVANTADA');
+  const overdueRestrs = activeRestrs.filter(r => r.fechaCompromiso && new Date(r.fechaCompromiso) < new Date(TODAY));
+  const weekActs = packages.filter(p => (programacion[p.id]?.[semana]?.prog || 0) > 0);
+  const valProg = weekActs.reduce((s,p) => s + (programacion[p.id]?.[semana]?.prog||0)*p.precio, 0);
+  const valEjec = weekActs.reduce((s,p) => s + (programacion[p.id]?.[semana]?.ejec||0)*p.precio, 0);
+  const fotos = plan?.fotos || [];
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3 no-print">
+        <SectionTitle icon={FileText} sub="Reporte semanal completo listo para imprimir y entregar al inspector">Informe Semanal</SectionTitle>
+        <div className="flex items-center gap-3">
+          <select value={semana} onChange={e => setSemana(parseInt(e.target.value))} className="px-3 py-2 text-sm border border-stone-200 rounded-md bg-white font-mono font-semibold">
+            {Array.from({length:PROJECT.totalWeeks},(_,i)=>i+1).map(w=><option key={w} value={w}>Semana {w}</option>)}
+          </select>
+          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700 no-print">
+            <Printer className="w-4 h-4"/>Imprimir / PDF
+          </button>
+        </div>
+      </div>
+      <div className="bg-white border border-stone-200 rounded-xl p-8 space-y-6">
+        <div className="border-b-2 border-stone-900 pb-4 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold">{PROJECT.entidad}</p>
+            <h1 className="text-2xl font-bold text-stone-900 font-display mt-1">{PROJECT.name}</h1>
+            <p className="text-sm text-stone-600 mt-0.5">{PROJECT.subtitle} · Meta {PROJECT.meta} · {PROJECT.modalidad}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-widest text-stone-500">Informe Semanal</p>
+            <p className="text-3xl font-bold font-mono text-stone-900">Sem. {semana}</p>
+            <p className="text-xs text-stone-500 mt-1">{fmtFullDate(isoDate(start))} al {fmtFullDate(isoDate(end))}</p>
+            <p className="text-xs text-stone-400 mt-0.5">Emitido: {fmtFullDate(TODAY)}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            {label:'PPC Semana', val:(ppc*100).toFixed(0)+'%', note:'meta: 85%', color: ppc>=0.85?'#16A34A':ppc>=0.6?'#D97706':'#DC2626'},
+            {label:'Compromisos', val:total, note:'plan firmado', color:'#1C1917'},
+            {label:'Valoriz. Prog.', val:formatCurrency(valProg), note:'programado', color:'#1E40AF'},
+            {label:'Valoriz. Ejec.', val:formatCurrency(valEjec), note:'ejecutado', color:'#15803D'},
+          ].map(k => (
+            <div key={k.label} className="border border-stone-200 rounded-lg p-3 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-stone-500 font-semibold">{k.label}</p>
+              <p className="text-2xl font-bold font-mono mt-1" style={{color:k.color}}>{k.val}</p>
+              <p className="text-xs text-stone-500 mt-0.5">{k.note}</p>
+            </div>
+          ))}
+        </div>
+        {plan && plan.commitments.length > 0 && (
+          <div>
+            <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-3 pb-2 border-b border-stone-200">Compromisos Semanales</h2>
+            <table className="w-full text-xs border-collapse">
+              <thead><tr className="bg-stone-100"><th className="text-left p-2 border border-stone-200">N°</th><th className="text-left p-2 border border-stone-200">Partida</th><th className="text-left p-2 border border-stone-200">Meta</th><th className="text-left p-2 border border-stone-200">Responsable</th><th className="text-center p-2 border border-stone-200">Resultado</th><th className="text-left p-2 border border-stone-200">CNC</th></tr></thead>
+              <tbody>
+                {plan.commitments.map((c,i)=>{
+                  const pkg=packages.find(p=>p.id===c.packageId);
+                  return <tr key={c.id} className={i%2===0?'bg-white':'bg-stone-50'}>
+                    <td className="p-2 border border-stone-200 font-mono">{i+1}</td>
+                    <td className="p-2 border border-stone-200">{pkg?.desc||c.packageId}</td>
+                    <td className="p-2 border border-stone-200 font-mono">{c.metaText}</td>
+                    <td className="p-2 border border-stone-200">{c.responsable}</td>
+                    <td className="p-2 border border-stone-200 text-center font-semibold" style={{color:c.result==='CUMPLIDO'?'#15803D':c.result==='NO CUMPLIDO'?'#B91C1C':'#78716C'}}>{c.result||'—'}</td>
+                    <td className="p-2 border border-stone-200 text-stone-600">{c.cnc?.descripcion||'—'}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {activeRestrs.length > 0 && (
+          <div>
+            <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-3 pb-2 border-b border-stone-200">Restricciones Activas ({activeRestrs.length}) · Vencidas: {overdueRestrs.length}</h2>
+            <table className="w-full text-xs border-collapse">
+              <thead><tr className="bg-stone-100"><th className="text-left p-2 border border-stone-200">Descripción</th><th className="text-left p-2 border border-stone-200">Categoría</th><th className="text-left p-2 border border-stone-200">Responsable</th><th className="text-left p-2 border border-stone-200">Compromiso</th><th className="text-left p-2 border border-stone-200">Estado</th></tr></thead>
+              <tbody>
+                {activeRestrs.map((r,i)=>{
+                  const ov=r.fechaCompromiso&&new Date(r.fechaCompromiso)<new Date(TODAY);
+                  return <tr key={r.id} className={ov?'bg-red-50':i%2===0?'bg-white':'bg-stone-50'}>
+                    <td className="p-2 border border-stone-200">{r.desc}</td>
+                    <td className="p-2 border border-stone-200">{r.categoria}</td>
+                    <td className="p-2 border border-stone-200">{r.responsable}</td>
+                    <td className={`p-2 border border-stone-200 font-mono ${ov?'text-red-700 font-semibold':''}`}>{r.fechaCompromiso}</td>
+                    <td className="p-2 border border-stone-200">{r.estado}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {fotos.length > 0 && (
+          <div>
+            <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-3 pb-2 border-b border-stone-200">Registro Fotográfico ({fotos.length})</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {fotos.map(f=><div key={f.id} className="rounded-lg overflow-hidden border border-stone-200">
+                <img src={f.dataUrl} alt={f.caption} className="w-full h-32 object-cover"/>
+                {f.caption&&<p className="p-1.5 text-[10px] text-stone-600 bg-stone-50">{f.caption}</p>}
+              </div>)}
+            </div>
+          </div>
+        )}
+        <div className="border-t-2 border-stone-200 pt-6 mt-6">
+          <div className="grid grid-cols-3 gap-8 text-center text-xs text-stone-600">
+            <div><div className="h-12 border-b border-stone-400 mb-2"/><p className="font-semibold">Residente de Obra</p></div>
+            <div><div className="h-12 border-b border-stone-400 mb-2"/><p className="font-semibold">Inspector / Supervisor</p></div>
+            <div><div className="h-12 border-b border-stone-400 mb-2"/><p className="font-semibold">Representante MP Cusco</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// MANO DE OBRA VIEW
+// ============================================================================
+const ManoObraView = ({ moRegistros, setMoRegistros }) => {
+  const emptyForm = { fecha: TODAY, semana: CURRENT_WEEK, frente: 'ESTRUCTURAS', cuadrilla: '', cantidad: '', horas: 8, rendimiento: '', obs: '' };
+  const [form, setForm] = useState(emptyForm);
+  const [showForm, setShowForm] = useState(false);
+
+  const addRegistro = () => {
+    if (!form.cuadrilla || !form.cantidad) { alert('Ingresa cuadrilla y cantidad de trabajadores'); return; }
+    setMoRegistros(prev => [...prev, { ...form, id: Date.now(), cantidad: parseInt(form.cantidad), horas: parseFloat(form.horas)||8, rendimiento: parseFloat(form.rendimiento)||0 }]);
+    setForm(emptyForm); setShowForm(false);
+  };
+
+  const byWeek = useMemo(() => {
+    const m = {};
+    moRegistros.forEach(r => { if (!m[r.semana]) m[r.semana]={semana:r.semana,totalPersonas:0,totalHH:0}; m[r.semana].totalPersonas+=r.cantidad; m[r.semana].totalHH+=r.cantidad*r.horas; });
+    return Object.values(m).sort((a,b)=>a.semana-b.semana);
+  }, [moRegistros]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <SectionTitle icon={HardHat} sub="Registro diario de personal por frente — Administración Directa">Control de Mano de Obra</SectionTitle>
+        <button onClick={()=>setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
+          <Plus className="w-4 h-4"/>{showForm?'Cancelar':'Registrar día'}
+        </button>
+      </div>
+      {showForm && (
+        <Card>
+          <p className="text-sm font-semibold text-stone-700 mb-3">Nuevo Registro de MO</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              {label:'Fecha',type:'date',key:'fecha'},{label:'Semana',type:'number',key:'semana'},
+            ].map(f=><div key={f.key}><label className="text-xs text-stone-500 font-medium">{f.label}</label>
+              <input type={f.type} value={form[f.key]} onChange={e=>setForm({...form,[f.key]:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>)}
+            <div><label className="text-xs text-stone-500 font-medium">Frente</label>
+              <select value={form.frente} onChange={e=>setForm({...form,frente:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none bg-white">
+                {Object.entries(FRENTE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+              </select></div>
+            <div><label className="text-xs text-stone-500 font-medium">Cuadrilla / Oficio</label>
+              <input type="text" placeholder="Ej: Albañiles" value={form.cuadrilla} onChange={e=>setForm({...form,cuadrilla:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+            <div><label className="text-xs text-stone-500 font-medium">N° Trabajadores</label>
+              <input type="number" placeholder="0" value={form.cantidad} onChange={e=>setForm({...form,cantidad:e.target.value})} min="0" className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+            <div><label className="text-xs text-stone-500 font-medium">Horas / día</label>
+              <input type="number" value={form.horas} onChange={e=>setForm({...form,horas:e.target.value})} min="1" max="12" step="0.5" className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+            <div><label className="text-xs text-stone-500 font-medium">Rendimiento (und/HH)</label>
+              <input type="number" placeholder="0.00" value={form.rendimiento} onChange={e=>setForm({...form,rendimiento:e.target.value})} min="0" step="0.01" className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+            <div><label className="text-xs text-stone-500 font-medium">Observaciones</label>
+              <input type="text" placeholder="Opcional" value={form.obs} onChange={e=>setForm({...form,obs:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button onClick={addRegistro} className="px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">Guardar registro</button>
+          </div>
+        </Card>
+      )}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard label="Total HH registradas" value={moRegistros.reduce((s,r)=>s+r.cantidad*r.horas,0).toFixed(0)} sub="Horas-Hombre acumuladas" accent="azul" icon={HardHat}/>
+        <KPICard label="Pico de personal" value={byWeek.length>0?Math.max(...byWeek.map(w=>w.totalPersonas)):0} sub="máx. personas/semana" accent="verde" icon={TrendingUp}/>
+        <KPICard label="Semanas registradas" value={byWeek.length} sub={`de ${CURRENT_WEEK} transcurridas`} accent="gris" icon={CalendarDays}/>
+        <KPICard label="Registros totales" value={moRegistros.length} sub="entradas en el log" accent="amarillo" icon={FileText}/>
+      </div>
+      {byWeek.length > 0 && (
+        <Card>
+          <SectionTitle icon={BarChart3} sub="HH y personal por semana">Evolución de Mano de Obra</SectionTitle>
+          <div style={{height:240}}>
+            <ResponsiveContainer>
+              <BarChart data={byWeek.map(w=>({semana:`S${w.semana}`,HH:w.totalHH,Personas:w.totalPersonas}))} margin={{top:5,right:20,bottom:5,left:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F4"/>
+                <XAxis dataKey="semana" tick={{fontSize:11,fill:'#57534E'}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:11,fill:'#57534E'}} axisLine={false} tickLine={false}/>
+                <Tooltip contentStyle={{backgroundColor:'white',border:'1px solid #E7E5E4',borderRadius:'6px',fontSize:'12px'}}/>
+                <Legend wrapperStyle={{fontSize:12}}/>
+                <Bar dataKey="HH" name="HH totales" fill="#1E40AF" radius={[3,3,0,0]}/>
+                <Bar dataKey="Personas" name="Personas/sem" fill="#10B981" radius={[3,3,0,0]}/>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+      <Card noPad>
+        <div className="p-4 border-b border-stone-200"><p className="font-semibold text-stone-900 text-sm">Registro Detallado</p></div>
+        {moRegistros.length === 0
+          ? <div className="p-8 text-center text-stone-500 text-sm"><HardHat className="w-10 h-10 mx-auto mb-2 text-stone-300"/>No hay registros. Usa el botón "Registrar día" para empezar.</div>
+          : <div className="overflow-x-auto"><table className="w-full text-xs">
+              <thead><tr className="bg-stone-50 border-b border-stone-200">
+                {['Fecha','Sem.','Frente','Cuadrilla','Pers.','HH','Rend.','Obs.',''].map(h=><th key={h} className={`py-2 px-3 text-[10px] font-semibold text-stone-600 uppercase tracking-wider ${h==='Pers.'||h==='HH'||h==='Rend.'?'text-right':'text-left'}`}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {[...moRegistros].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(r=>(
+                  <tr key={r.id} className="border-b border-stone-100 hover:bg-stone-50">
+                    <td className="py-2 px-3 font-mono">{fmtDate(r.fecha)}</td>
+                    <td className="py-2 px-3 font-mono">S{r.semana}</td>
+                    <td className="py-2 px-3">{FRENTE_LABELS[r.frente]||r.frente}</td>
+                    <td className="py-2 px-3 font-medium text-stone-900">{r.cuadrilla}</td>
+                    <td className="py-2 px-3 text-right font-mono font-bold text-stone-900">{r.cantidad}</td>
+                    <td className="py-2 px-3 text-right font-mono text-blue-700">{(r.cantidad*r.horas).toFixed(0)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-stone-600">{r.rendimiento>0?r.rendimiento.toFixed(3):'—'}</td>
+                    <td className="py-2 px-3 text-stone-500">{r.obs||'—'}</td>
+                    <td className="py-2 px-2"><button onClick={()=>{if(confirm('¿Eliminar?'))setMoRegistros(prev=>prev.filter(x=>x.id!==r.id))}} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>}
+      </Card>
+    </div>
+  );
+};
+
+// ============================================================================
+// PRODUCCIÓN VIEW (Histograma + avance por tren)
+// ============================================================================
+const ProduccionView = ({ packages, programacion }) => {
+  const weeks = Array.from({length: PROJECT.totalWeeks}, (_,i) => i+1);
+  const chartData = useMemo(() => weeks.map(w => {
+    const prog = packages.reduce((s,p)=>s+(programacion[p.id]?.[w]?.prog||0)*p.precio,0);
+    const ejec = packages.reduce((s,p)=>s+(programacion[p.id]?.[w]?.ejec||0)*p.precio,0);
+    return { semana:`S${w}`, Programado: prog||null, Ejecutado: ejec||null };
+  }).filter(d=>d.Programado||d.Ejecutado), [packages, programacion]);
+
+  const trenProgress = useMemo(() => TRENES.map(t => {
+    const acts = packages.filter(p=>p.tren===t.id);
+    if (!acts.length) return null;
+    const total = acts.reduce((s,p)=>s+p.costo,0);
+    const ejec = acts.reduce((s,p)=>s+(p.metradoEjec/p.metrado)*p.costo,0);
+    return { ...t, total, ejec, pct: total>0?ejec/total:0, acts: acts.length };
+  }).filter(Boolean).filter(t=>t.total>0).sort((a,b)=>b.pct-a.pct), [packages]);
+
+  return (
+    <div className="space-y-4">
+      <SectionTitle icon={BarChart3} sub="Ritmo de producción semanal y avance por tren de trabajo">Producción Semanal</SectionTitle>
+      {chartData.length > 0 ? (
+        <Card>
+          <SectionTitle icon={Activity} sub="Valorización programada vs ejecutada por semana (S/.)">Histograma de Valorización Semanal</SectionTitle>
+          <div style={{height:300}}>
+            <ResponsiveContainer>
+              <BarChart data={chartData} margin={{top:5,right:20,bottom:5,left:10}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F4"/>
+                <XAxis dataKey="semana" tick={{fontSize:10,fill:'#57534E'}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:10,fill:'#57534E'}} axisLine={false} tickLine={false} tickFormatter={v=>'S/.'+Math.round(v/1000)+'k'}/>
+                <Tooltip formatter={v=>formatCurrency(v)} contentStyle={{backgroundColor:'white',border:'1px solid #E7E5E4',borderRadius:'6px',fontSize:'12px'}}/>
+                <Legend wrapperStyle={{fontSize:12}}/>
+                <Bar dataKey="Programado" fill="#94A3B8" radius={[3,3,0,0]}/>
+                <Bar dataKey="Ejecutado" fill="#16A34A" radius={[3,3,0,0]}/>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      ) : (
+        <Card><p className="text-center text-stone-500 py-8">Registra datos en Programación para ver el histograma</p></Card>
+      )}
+      <Card noPad>
+        <div className="p-4 border-b border-stone-200"><SectionTitle icon={GitCommit} sub="Porcentaje de avance de cada tren de trabajo">Avance por Tren</SectionTitle></div>
+        <div className="divide-y divide-stone-100">
+          {trenProgress.map(t=>(
+            <div key={t.id} className="p-4 flex items-center gap-4 hover:bg-stone-50">
+              <div className="w-2 h-10 rounded-full flex-shrink-0" style={{backgroundColor:t.color}}/>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-sm font-medium text-stone-900 truncate">{t.name}</p>
+                  <span className="text-xs font-mono font-bold ml-4 flex-shrink-0" style={{color:t.pct>=0.8?COLORS.verde.solid:t.pct>=0.4?COLORS.amarillo.solid:COLORS.rojo.solid}}>{(t.pct*100).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{width:`${Math.min(100,t.pct*100)}%`,backgroundColor:t.color}}/>
+                </div>
+                <p className="text-[10px] text-stone-400 mt-1">{t.acts} partidas · {formatCurrency(t.ejec)} de {formatCurrency(t.total)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ============================================================================
+// RFIs / CONSULTAS DDC VIEW
+// ============================================================================
+const RFIsView = ({ rfis, setRfis }) => {
+  const emptyForm = { numero:'', fecha:TODAY, asunto:'', para:'Proyectista', de:'Residente', estado:'PENDIENTE', fechaRespuesta:'', respuesta:'', impacto:'Medio', relacionado:'' };
+  const [form, setForm] = useState(emptyForm);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+
+  const ESTADOS_RFI = ['PENDIENTE','EN PROCESO','RESPONDIDA','CERRADA'];
+  const IMPACTOS = ['Alto','Medio','Bajo'];
+
+  const saveRfi = () => {
+    if (!form.asunto) { alert('Ingresa el asunto del RFI'); return; }
+    if (editId !== null) {
+      setRfis(prev=>prev.map(r=>r.id===editId?{...form,id:editId}:r));
+    } else {
+      setRfis(prev=>[...prev,{...form,id:Date.now()}]);
+    }
+    setModalOpen(false); setEditId(null); setForm(emptyForm);
+  };
+
+  const editRfi = (r) => { setForm({...r}); setEditId(r.id); setModalOpen(true); };
+  const deleteRfi = (id) => { if(confirm('¿Eliminar RFI?')) setRfis(prev=>prev.filter(r=>r.id!==id)); };
+
+  const stats = useMemo(()=>({
+    pendientes: rfis.filter(r=>r.estado==='PENDIENTE').length,
+    enProceso: rfis.filter(r=>r.estado==='EN PROCESO').length,
+    respondidas: rfis.filter(r=>r.estado==='RESPONDIDA'||r.estado==='CERRADA').length,
+    altoImpacto: rfis.filter(r=>r.impacto==='Alto'&&r.estado!=='CERRADA').length,
+  }),[rfis]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <SectionTitle icon={MessageSquare} sub="Seguimiento de consultas al proyectista, DDC Cusco y entidades externas">RFIs / Consultas DDC</SectionTitle>
+        <button onClick={()=>{setForm(emptyForm);setEditId(null);setModalOpen(true)}} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
+          <Plus className="w-4 h-4"/>Nuevo RFI
+        </button>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard label="Pendientes" value={stats.pendientes} sub="sin respuesta" accent="rojo" icon={AlertCircle}/>
+        <KPICard label="En proceso" value={stats.enProceso} sub="en seguimiento" accent="amarillo" icon={Clock}/>
+        <KPICard label="Respondidas" value={stats.respondidas} sub="cerradas/respondidas" accent="verde" icon={CheckCircle2}/>
+        <KPICard label="Alto impacto" value={stats.altoImpacto} sub="abiertas con riesgo alto" accent={stats.altoImpacto>2?'rojo':'amarillo'} icon={AlertTriangle}/>
+      </div>
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e=>e.target===e.currentTarget&&setModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-stone-200 flex items-center justify-between">
+              <h3 className="font-semibold text-stone-900">{editId?'Editar RFI':'Nuevo RFI / Consulta'}</h3>
+              <button onClick={()=>setModalOpen(false)}><X className="w-5 h-5 text-stone-400"/></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">N° RFI</label><input type="text" placeholder="RFI-001" value={form.numero} onChange={e=>setForm({...form,numero:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Fecha emisión</label><input type="date" value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+              </div>
+              <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Asunto *</label><input type="text" placeholder="Descripción de la consulta" value={form.asunto} onChange={e=>setForm({...form,asunto:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Para</label><input type="text" value={form.para} onChange={e=>setForm({...form,para:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">De</label><input type="text" value={form.de} onChange={e=>setForm({...form,de:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Estado</label><select value={form.estado} onChange={e=>setForm({...form,estado:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded bg-white focus:outline-none">{ESTADOS_RFI.map(s=><option key={s}>{s}</option>)}</select></div>
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Impacto</label><select value={form.impacto} onChange={e=>setForm({...form,impacto:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded bg-white focus:outline-none">{IMPACTOS.map(i=><option key={i}>{i}</option>)}</select></div>
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Fecha respuesta</label><input type="date" value={form.fechaRespuesta} onChange={e=>setForm({...form,fechaRespuesta:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+                <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Partida relacionada</label><input type="text" placeholder="Ej: A045, 1.3.4.1" value={form.relacionado} onChange={e=>setForm({...form,relacionado:e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+              </div>
+              <div><label className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Respuesta / Resolución</label><textarea value={form.respuesta} onChange={e=>setForm({...form,respuesta:e.target.value})} rows="3" placeholder="Descripción de la respuesta recibida..." className="w-full mt-1 px-3 py-2 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400 resize-none"/></div>
+            </div>
+            <div className="p-6 border-t border-stone-200 flex justify-end gap-3">
+              <button onClick={()=>setModalOpen(false)} className="px-4 py-2 text-sm border border-stone-200 rounded-md hover:bg-stone-50">Cancelar</button>
+              <button onClick={saveRfi} className="px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">Guardar RFI</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <Card noPad>
+        {rfis.length === 0
+          ? <div className="p-8 text-center text-stone-500 text-sm"><MessageSquare className="w-10 h-10 mx-auto mb-2 text-stone-300"/>No hay RFIs registrados. Usa el botón "Nuevo RFI" para empezar.</div>
+          : <div className="overflow-x-auto"><table className="w-full text-xs">
+              <thead><tr className="bg-stone-50 border-b border-stone-200">
+                {['N°','Fecha','Asunto','Para','Impacto','Estado','F. Resp.',''].map(h=><th key={h} className="text-left py-2.5 px-3 text-[10px] font-semibold text-stone-600 uppercase tracking-wider">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {rfis.map(r=>{
+                  const open = r.estado!=='CERRADA'&&r.estado!=='RESPONDIDA';
+                  return <tr key={r.id} className={`border-b border-stone-100 hover:bg-stone-50 ${r.impacto==='Alto'&&open?'border-l-2 border-l-red-500':''}`}>
+                    <td className="py-2.5 px-3 font-mono font-semibold text-stone-700">{r.numero||'—'}</td>
+                    <td className="py-2.5 px-3 font-mono">{fmtDate(r.fecha)}</td>
+                    <td className="py-2.5 px-3 max-w-xs"><p className="font-medium text-stone-900 truncate">{r.asunto}</p>{r.relacionado&&<p className="text-stone-400 text-[10px]">{r.relacionado}</p>}</td>
+                    <td className="py-2.5 px-3 text-stone-600">{r.para}</td>
+                    <td className="py-2.5 px-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.impacto==='Alto'?'bg-red-100 text-red-700':r.impacto==='Medio'?'bg-amber-100 text-amber-700':'bg-blue-100 text-blue-700'}`}>{r.impacto}</span></td>
+                    <td className="py-2.5 px-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.estado==='PENDIENTE'?'bg-red-100 text-red-700':r.estado==='EN PROCESO'?'bg-amber-100 text-amber-700':r.estado==='RESPONDIDA'?'bg-blue-100 text-blue-700':'bg-emerald-100 text-emerald-700'}`}>{r.estado}</span></td>
+                    <td className="py-2.5 px-3 font-mono">{r.fechaRespuesta?fmtDate(r.fechaRespuesta):'—'}</td>
+                    <td className="py-2.5 px-3 flex items-center gap-1">
+                      <button onClick={()=>editRfi(r)} className="text-stone-300 hover:text-stone-700"><Edit2 className="w-3.5 h-3.5"/></button>
+                      <button onClick={()=>deleteRfi(r.id)} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>
+                    </td>
+                  </tr>;
+                })}
+              </tbody>
+            </table></div>}
+      </Card>
+    </div>
+  );
+};
+
+// ============================================================================
 // MAIN APP
 // ============================================================================
 
@@ -2460,18 +3038,22 @@ export default function App() {
   const [weeklyPlans, setWeeklyPlans] = useState(INITIAL_WEEKLY_PLANS);
   const [acMonthly, setAcMonthly] = useState(INITIAL_AC_MONTHLY);
   const [programacion, setProgramacion] = useState({});
+  const [moRegistros, setMoRegistros] = useState([]);
+  const [rfis, setRfis] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, r, ppc, wp, ac, prog] = await Promise.all([
+        const [p, r, ppc, wp, ac, prog, mo, rfi] = await Promise.all([
           window.storage?.get('packages').catch(() => null),
           window.storage?.get('restrictions').catch(() => null),
           window.storage?.get('ppc').catch(() => null),
           window.storage?.get('weeklyPlans').catch(() => null),
           window.storage?.get('acMonthly').catch(() => null),
           window.storage?.get('programacion').catch(() => null),
+          window.storage?.get('moRegistros').catch(() => null),
+          window.storage?.get('rfis').catch(() => null),
         ]);
         if (p?.value) setPackages(JSON.parse(p.value));
         if (r?.value) setRestrictions(JSON.parse(r.value));
@@ -2479,6 +3061,8 @@ export default function App() {
         if (wp?.value) setWeeklyPlans(JSON.parse(wp.value));
         if (ac?.value) setAcMonthly(JSON.parse(ac.value));
         if (prog?.value) setProgramacion(JSON.parse(prog.value));
+        if (mo?.value) setMoRegistros(JSON.parse(mo.value));
+        if (rfi?.value) setRfis(JSON.parse(rfi.value));
       } catch (e) {}
       setLoaded(true);
     })();
@@ -2490,6 +3074,8 @@ export default function App() {
   useEffect(() => { if (loaded) window.storage?.set('weeklyPlans', JSON.stringify(weeklyPlans)).catch(() => {}); }, [weeklyPlans, loaded]);
   useEffect(() => { if (loaded) window.storage?.set('acMonthly', JSON.stringify(acMonthly)).catch(() => {}); }, [acMonthly, loaded]);
   useEffect(() => { if (loaded) window.storage?.set('programacion', JSON.stringify(programacion)).catch(() => {}); }, [programacion, loaded]);
+  useEffect(() => { if (loaded) window.storage?.set('moRegistros', JSON.stringify(moRegistros)).catch(() => {}); }, [moRegistros, loaded]);
+  useEffect(() => { if (loaded) window.storage?.set('rfis', JSON.stringify(rfis)).catch(() => {}); }, [rfis, loaded]);
 
   const resetData = async () => {
     if (confirm('¿Restablecer todos los datos a los iniciales? Esto borrará tus cambios.')) {
@@ -2526,10 +3112,15 @@ export default function App() {
     { id: 'trenes', label: 'Trenes', icon: GitCommit },
     { id: 'actividades', label: 'Actividades', icon: Layers },
     { id: 'programacion', label: 'Programación', icon: CalendarDays },
+    { id: 'lookahead', label: 'Lookahead', icon: Eye },
     { id: 'control', label: 'Control Semanal', icon: ClipboardCheck, badge: pendingControl },
     { id: 'restricciones', label: 'Restricciones', icon: AlertTriangle },
     { id: 'ppc', label: 'PPC', icon: Activity },
     { id: 'valorGanado', label: 'Valor Ganado', icon: TrendingUp },
+    { id: 'mo', label: 'Mano de Obra', icon: HardHat },
+    { id: 'produccion', label: 'Producción', icon: BarChart3 },
+    { id: 'rfis', label: 'RFIs / DDC', icon: MessageSquare },
+    { id: 'informe', label: 'Informe', icon: FileText },
   ];
 
   return (
@@ -2613,6 +3204,11 @@ export default function App() {
         {activeTab === 'ppc' && <PPCView ppcHistory={ppcHistory} setActiveTab={setActiveTab} />}
         {activeTab === 'partidas' && <ValorGanadoView acMonthly={acMonthly} setAcMonthly={setAcMonthly} />}
         {activeTab === 'valorGanado' && <ValorGanadoView acMonthly={acMonthly} setAcMonthly={setAcMonthly} />}
+        {activeTab === 'lookahead' && <LookaheadView packages={packages} programacion={programacion} restrictions={restrictions} totalWeeks={PROJECT.totalWeeks} />}
+        {activeTab === 'informe' && <InformeSemanalView packages={packages} weeklyPlans={weeklyPlans} ppcHistory={ppcHistory} restrictions={restrictions} programacion={programacion} />}
+        {activeTab === 'mo' && <ManoObraView moRegistros={moRegistros} setMoRegistros={setMoRegistros} />}
+        {activeTab === 'produccion' && <ProduccionView packages={packages} programacion={programacion} />}
+        {activeTab === 'rfis' && <RFIsView rfis={rfis} setRfis={setRfis} />}
 
         <footer className="mt-12 pt-6 border-t border-stone-200 text-center text-xs text-stone-500">
           <p>Last Planner Dashboard · {PROJECT.name} · Meta {PROJECT.meta}</p>
