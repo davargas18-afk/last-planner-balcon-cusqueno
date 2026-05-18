@@ -2747,105 +2747,272 @@ const InformeSemanalView = ({ packages, weeklyPlans, ppcHistory, restrictions, p
 // ============================================================================
 // MANO DE OBRA VIEW
 // ============================================================================
-const ManoObraView = ({ moRegistros, setMoRegistros }) => {
-  const emptyForm = { fecha: TODAY, semana: CURRENT_WEEK, frente: 'ESTRUCTURAS', cuadrilla: '', cantidad: '', horas: 8, rendimiento: '', obs: '' };
+const TARIFAS_MO = { peon: 68.90, oficial: 83.30, operario: 96.10 };
+
+const ManoObraView = ({ moRegistros, setMoRegistros, packages }) => {
+  const emptyForm = { fecha: TODAY, semana: CURRENT_WEEK, frente: 'ESTRUCTURAS', partida: '', horas: 8, peon: 0, oficial: 0, operario: 0, obs: '' };
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
+  const [filterSem, setFilterSem] = useState('');
+  const [filterFrente, setFilterFrente] = useState('');
+
+  const calcPersonas = r => (parseInt(r.peon)||0) + (parseInt(r.oficial)||0) + (parseInt(r.operario)||0);
+  const calcHH = r => calcPersonas(r) * (parseFloat(r.horas)||8);
+  const calcCosto = r => ((parseInt(r.peon)||0)*TARIFAS_MO.peon + (parseInt(r.oficial)||0)*TARIFAS_MO.oficial + (parseInt(r.operario)||0)*TARIFAS_MO.operario) * ((parseFloat(r.horas)||8) / 8);
+
+  const formPersonas = (parseInt(form.peon)||0) + (parseInt(form.oficial)||0) + (parseInt(form.operario)||0);
+  const formHH = formPersonas * (parseFloat(form.horas)||8);
+  const formCosto = ((parseInt(form.peon)||0)*TARIFAS_MO.peon + (parseInt(form.oficial)||0)*TARIFAS_MO.oficial + (parseInt(form.operario)||0)*TARIFAS_MO.operario) * ((parseFloat(form.horas)||8) / 8);
 
   const addRegistro = () => {
-    if (!form.cuadrilla || !form.cantidad) { alert('Ingresa cuadrilla y cantidad de trabajadores'); return; }
-    setMoRegistros(prev => [...prev, { ...form, id: Date.now(), cantidad: parseInt(form.cantidad), horas: parseFloat(form.horas)||8, rendimiento: parseFloat(form.rendimiento)||0 }]);
+    if (formPersonas === 0) { alert('Ingresa al menos un trabajador (Peón, Oficial u Operario)'); return; }
+    setMoRegistros(prev => [...prev, {
+      ...form, id: Date.now(),
+      peon: parseInt(form.peon)||0,
+      oficial: parseInt(form.oficial)||0,
+      operario: parseInt(form.operario)||0,
+      horas: parseFloat(form.horas)||8,
+    }]);
     setForm(emptyForm); setShowForm(false);
   };
 
   const byWeek = useMemo(() => {
     const m = {};
-    moRegistros.forEach(r => { if (!m[r.semana]) m[r.semana]={semana:r.semana,totalPersonas:0,totalHH:0}; m[r.semana].totalPersonas+=r.cantidad; m[r.semana].totalHH+=r.cantidad*r.horas; });
+    moRegistros.forEach(r => {
+      const h = r.horas || 8;
+      if (!m[r.semana]) m[r.semana] = { semana: r.semana, peonHH: 0, oficialHH: 0, operarioHH: 0, HH: 0, costo: 0 };
+      m[r.semana].peonHH += (r.peon||0) * h;
+      m[r.semana].oficialHH += (r.oficial||0) * h;
+      m[r.semana].operarioHH += (r.operario||0) * h;
+      m[r.semana].HH += calcHH(r);
+      m[r.semana].costo += calcCosto(r);
+    });
     return Object.values(m).sort((a,b)=>a.semana-b.semana);
   }, [moRegistros]);
+
+  const byPartida = useMemo(() => {
+    const m = {};
+    moRegistros.filter(r=>r.partida).forEach(r => {
+      if (!m[r.partida]) m[r.partida] = { id: r.partida, HH: 0, costo: 0, peon: 0, oficial: 0, operario: 0, dias: 0 };
+      m[r.partida].peon += r.peon||0;
+      m[r.partida].oficial += r.oficial||0;
+      m[r.partida].operario += r.operario||0;
+      m[r.partida].HH += calcHH(r);
+      m[r.partida].costo += calcCosto(r);
+      m[r.partida].dias += 1;
+    });
+    return Object.values(m).sort((a,b) => b.costo - a.costo);
+  }, [moRegistros]);
+
+  const totals = useMemo(() => ({
+    HH: moRegistros.reduce((s,r) => s + calcHH(r), 0),
+    costo: moRegistros.reduce((s,r) => s + calcCosto(r), 0),
+    peon: moRegistros.reduce((s,r) => s + (r.peon||0), 0),
+    oficial: moRegistros.reduce((s,r) => s + (r.oficial||0), 0),
+    operario: moRegistros.reduce((s,r) => s + (r.operario||0), 0),
+  }), [moRegistros]);
+
+  const semanas = [...new Set(moRegistros.map(r=>r.semana))].sort((a,b)=>a-b);
+
+  const filtered = useMemo(() =>
+    moRegistros.filter(r =>
+      (!filterSem || String(r.semana) === filterSem) &&
+      (!filterFrente || r.frente === filterFrente)
+    ).sort((a,b) => b.fecha.localeCompare(a.fecha)),
+  [moRegistros, filterSem, filterFrente]);
+
+  const CATS = [
+    { key:'peon',     label:'Peón',     tarifa:TARIFAS_MO.peon,     bg:'bg-orange-100', text:'text-orange-800', border:'border-orange-200', fill:'#F97316' },
+    { key:'oficial',  label:'Oficial',  tarifa:TARIFAS_MO.oficial,  bg:'bg-blue-100',   text:'text-blue-800',   border:'border-blue-200',   fill:'#3B82F6' },
+    { key:'operario', label:'Operario', tarifa:TARIFAS_MO.operario, bg:'bg-emerald-100',text:'text-emerald-800',border:'border-emerald-200',fill:'#10B981' },
+  ];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <SectionTitle icon={HardHat} sub="Registro diario de personal por frente — Administración Directa">Control de Mano de Obra</SectionTitle>
+        <SectionTitle icon={HardHat} sub="Registro diario por categoría, frente y partida — Administración Directa">Control de Mano de Obra</SectionTitle>
         <button onClick={()=>setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
           <Plus className="w-4 h-4"/>{showForm?'Cancelar':'Registrar día'}
         </button>
       </div>
+
       {showForm && (
         <Card>
-          <p className="text-sm font-semibold text-stone-700 mb-3">Nuevo Registro de MO</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              {label:'Fecha',type:'date',key:'fecha'},{label:'Semana',type:'number',key:'semana'},
-            ].map(f=><div key={f.key}><label className="text-xs text-stone-500 font-medium">{f.label}</label>
-              <input type={f.type} value={form[f.key]} onChange={e=>setForm({...form,[f.key]:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>)}
+          <p className="text-sm font-semibold text-stone-700 mb-4">Nuevo Registro de Mano de Obra</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div><label className="text-xs text-stone-500 font-medium">Fecha</label>
+              <input type="date" value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+            <div><label className="text-xs text-stone-500 font-medium">Semana</label>
+              <input type="number" value={form.semana} onChange={e=>setForm({...form,semana:parseInt(e.target.value)||1})} min="1" max={PROJECT.totalWeeks} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
             <div><label className="text-xs text-stone-500 font-medium">Frente</label>
               <select value={form.frente} onChange={e=>setForm({...form,frente:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none bg-white">
                 {Object.entries(FRENTE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
               </select></div>
-            <div><label className="text-xs text-stone-500 font-medium">Cuadrilla / Oficio</label>
-              <input type="text" placeholder="Ej: Albañiles" value={form.cuadrilla} onChange={e=>setForm({...form,cuadrilla:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
-            <div><label className="text-xs text-stone-500 font-medium">N° Trabajadores</label>
-              <input type="number" placeholder="0" value={form.cantidad} onChange={e=>setForm({...form,cantidad:e.target.value})} min="0" className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
-            <div><label className="text-xs text-stone-500 font-medium">Horas / día</label>
+            <div><label className="text-xs text-stone-500 font-medium">Horas trabajadas / día</label>
               <input type="number" value={form.horas} onChange={e=>setForm({...form,horas:e.target.value})} min="1" max="12" step="0.5" className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
-            <div><label className="text-xs text-stone-500 font-medium">Rendimiento (und/HH)</label>
-              <input type="number" placeholder="0.00" value={form.rendimiento} onChange={e=>setForm({...form,rendimiento:e.target.value})} min="0" step="0.01" className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
+          </div>
+
+          <div className="bg-stone-50 rounded-lg p-4 mb-4">
+            <p className="text-xs font-semibold text-stone-600 uppercase tracking-wider mb-3">Categorías de Mano de Obra — Jornales construcción civil</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {CATS.map(cat => (
+                <div key={cat.key} className={`rounded-lg border p-3 ${cat.bg} ${cat.border}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-sm font-bold ${cat.text}`}>{cat.label}</span>
+                    <span className={`text-xs font-mono ${cat.text} opacity-80`}>S/. {cat.tarifa.toFixed(2)}/jornal</span>
+                  </div>
+                  <input type="number" value={form[cat.key]}
+                    onChange={e=>setForm({...form,[cat.key]:e.target.value})}
+                    min="0" placeholder="0"
+                    className="w-full px-2 py-2 text-lg border-0 rounded bg-white/80 focus:outline-none text-center font-mono font-bold text-stone-900"/>
+                  {(parseInt(form[cat.key])||0) > 0 && (
+                    <p className={`text-[10px] mt-1.5 text-center font-mono ${cat.text} opacity-70`}>
+                      S/. {((parseInt(form[cat.key])||0) * cat.tarifa * ((parseFloat(form.horas)||8)/8)).toFixed(2)} este día
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            {formPersonas > 0 && (
+              <div className="mt-3 p-3 bg-white rounded-lg border border-stone-200 grid grid-cols-3 gap-2 text-center text-xs">
+                <div><p className="text-stone-500">Total personas</p><p className="font-bold text-stone-900 font-mono text-base">{formPersonas}</p></div>
+                <div><p className="text-stone-500">HH del día</p><p className="font-bold text-blue-700 font-mono text-base">{formHH}</p></div>
+                <div><p className="text-stone-500">Costo del día</p><p className="font-bold text-emerald-700 font-mono text-base">S/. {formCosto.toFixed(2)}</p></div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label className="text-xs text-stone-500 font-medium">Partida vinculada <span className="text-stone-400">(opcional)</span></label>
+              <select value={form.partida} onChange={e=>setForm({...form,partida:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none bg-white">
+                <option value="">— Sin vinculación —</option>
+                {(packages||[]).map(p=><option key={p.id} value={p.id}>{p.item} — {p.desc.slice(0,55)}{p.desc.length>55?'…':''} ({p.und})</option>)}
+              </select></div>
             <div><label className="text-xs text-stone-500 font-medium">Observaciones</label>
               <input type="text" placeholder="Opcional" value={form.obs} onChange={e=>setForm({...form,obs:e.target.value})} className="w-full mt-1 px-2 py-1.5 text-sm border border-stone-200 rounded focus:outline-none focus:border-stone-400"/></div>
           </div>
-          <div className="mt-3 flex justify-end">
-            <button onClick={addRegistro} className="px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">Guardar registro</button>
+          <div className="mt-4 flex justify-end">
+            <button onClick={addRegistro} className="px-5 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">Guardar registro</button>
           </div>
         </Card>
       )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard label="Total HH registradas" value={moRegistros.reduce((s,r)=>s+r.cantidad*r.horas,0).toFixed(0)} sub="Horas-Hombre acumuladas" accent="azul" icon={HardHat}/>
-        <KPICard label="Pico de personal" value={byWeek.length>0?Math.max(...byWeek.map(w=>w.totalPersonas)):0} sub="máx. personas/semana" accent="verde" icon={TrendingUp}/>
+        <KPICard label="Total HH registradas" value={totals.HH.toFixed(0)} sub="Horas-Hombre acumuladas" accent="azul" icon={HardHat}/>
+        <KPICard label="Costo MO estimado" value={`S/. ${Math.round(totals.costo).toLocaleString()}`} sub="Jornales acumulados" accent="verde" icon={TrendingUp}/>
         <KPICard label="Semanas registradas" value={byWeek.length} sub={`de ${CURRENT_WEEK} transcurridas`} accent="gris" icon={CalendarDays}/>
         <KPICard label="Registros totales" value={moRegistros.length} sub="entradas en el log" accent="amarillo" icon={FileText}/>
       </div>
+
+      {moRegistros.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {CATS.map(c => (
+            <div key={c.key} className={`rounded-lg p-4 ${c.bg}`}>
+              <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${c.text} opacity-70`}>{c.label}s</p>
+              <p className={`text-3xl font-bold font-mono ${c.text}`}>{totals[c.key]}</p>
+              <p className={`text-xs mt-0.5 ${c.text} opacity-60`}>S/. {(totals[c.key]*c.tarifa).toFixed(0)} en jornales</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {byWeek.length > 0 && (
         <Card>
-          <SectionTitle icon={BarChart3} sub="HH y personal por semana">Evolución de Mano de Obra</SectionTitle>
-          <div style={{height:240}}>
+          <SectionTitle icon={BarChart3} sub="HH apiladas por categoría de MO por semana">Evolución Semanal — HH por Categoría</SectionTitle>
+          <div style={{height:260}}>
             <ResponsiveContainer>
-              <BarChart data={byWeek.map(w=>({semana:`S${w.semana}`,HH:w.totalHH,Personas:w.totalPersonas}))} margin={{top:5,right:20,bottom:5,left:0}}>
+              <BarChart data={byWeek.map(w=>({semana:`S${w.semana}`,Peón:w.peonHH,Oficial:w.oficialHH,Operario:w.operarioHH}))} margin={{top:5,right:20,bottom:5,left:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F4"/>
                 <XAxis dataKey="semana" tick={{fontSize:11,fill:'#57534E'}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fontSize:11,fill:'#57534E'}} axisLine={false} tickLine={false}/>
-                <Tooltip contentStyle={{backgroundColor:'white',border:'1px solid #E7E5E4',borderRadius:'6px',fontSize:'12px'}}/>
+                <YAxis tick={{fontSize:11,fill:'#57534E'}} axisLine={false} tickLine={false} label={{value:'HH',angle:-90,position:'insideLeft',fontSize:10,fill:'#57534E'}}/>
+                <Tooltip contentStyle={{backgroundColor:'white',border:'1px solid #E7E5E4',borderRadius:'6px',fontSize:'12px'}} formatter={(v,n)=>[v+' HH',n]}/>
                 <Legend wrapperStyle={{fontSize:12}}/>
-                <Bar dataKey="HH" name="HH totales" fill="#1E40AF" radius={[3,3,0,0]}/>
-                <Bar dataKey="Personas" name="Personas/sem" fill="#10B981" radius={[3,3,0,0]}/>
+                <Bar dataKey="Peón" stackId="a" fill="#F97316"/>
+                <Bar dataKey="Oficial" stackId="a" fill="#3B82F6"/>
+                <Bar dataKey="Operario" stackId="a" fill="#10B981" radius={[3,3,0,0]}/>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
       )}
-      <Card noPad>
-        <div className="p-4 border-b border-stone-200"><p className="font-semibold text-stone-900 text-sm">Registro Detallado</p></div>
-        {moRegistros.length === 0
-          ? <div className="p-8 text-center text-stone-500 text-sm"><HardHat className="w-10 h-10 mx-auto mb-2 text-stone-300"/>No hay registros. Usa el botón "Registrar día" para empezar.</div>
-          : <div className="overflow-x-auto"><table className="w-full text-xs">
+
+      {byPartida.length > 0 && (
+        <Card noPad>
+          <div className="p-4 border-b border-stone-200"><SectionTitle icon={Package} sub="HH y costo de MO acumulado por partida vinculada">MO por Partida</SectionTitle></div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
               <thead><tr className="bg-stone-50 border-b border-stone-200">
-                {['Fecha','Sem.','Frente','Cuadrilla','Pers.','HH','Rend.','Obs.',''].map(h=><th key={h} className={`py-2 px-3 text-[10px] font-semibold text-stone-600 uppercase tracking-wider ${h==='Pers.'||h==='HH'||h==='Rend.'?'text-right':'text-left'}`}>{h}</th>)}
+                {['Partida','Días reg.','Peones','Oficiales','Operarios','HH Total','Costo MO est.'].map(h=>(
+                  <th key={h} className={`py-2 px-3 text-[10px] font-semibold text-stone-600 uppercase tracking-wider ${h==='Partida'?'text-left':'text-right'}`}>{h}</th>
+                ))}
               </tr></thead>
               <tbody>
-                {[...moRegistros].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(r=>(
-                  <tr key={r.id} className="border-b border-stone-100 hover:bg-stone-50">
-                    <td className="py-2 px-3 font-mono">{fmtDate(r.fecha)}</td>
-                    <td className="py-2 px-3 font-mono">S{r.semana}</td>
-                    <td className="py-2 px-3">{FRENTE_LABELS[r.frente]||r.frente}</td>
-                    <td className="py-2 px-3 font-medium text-stone-900">{r.cuadrilla}</td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-stone-900">{r.cantidad}</td>
-                    <td className="py-2 px-3 text-right font-mono text-blue-700">{(r.cantidad*r.horas).toFixed(0)}</td>
-                    <td className="py-2 px-3 text-right font-mono text-stone-600">{r.rendimiento>0?r.rendimiento.toFixed(3):'—'}</td>
-                    <td className="py-2 px-3 text-stone-500">{r.obs||'—'}</td>
-                    <td className="py-2 px-2"><button onClick={()=>{if(confirm('¿Eliminar?'))setMoRegistros(prev=>prev.filter(x=>x.id!==r.id))}} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button></td>
-                  </tr>
+                {byPartida.map(bp => {
+                  const pkg = (packages||[]).find(p=>p.id===bp.id);
+                  return (
+                    <tr key={bp.id} className="border-b border-stone-100 hover:bg-stone-50">
+                      <td className="py-2.5 px-3 max-w-[220px]">
+                        <p className="font-semibold text-stone-900 truncate">{pkg?.item||bp.id} — {pkg?.desc?.slice(0,45)||'—'}</p>
+                        <p className="text-stone-400 text-[10px]">{pkg?.und||''}</p>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-stone-600">{bp.dias}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-orange-700">{bp.peon}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-blue-700">{bp.oficial}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-700">{bp.operario}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-stone-900">{bp.HH.toFixed(0)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">S/. {bp.costo.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      <Card noPad>
+        <div className="p-4 border-b border-stone-200 flex items-center justify-between flex-wrap gap-3">
+          <p className="font-semibold text-stone-900 text-sm">Registro Detallado</p>
+          <div className="flex items-center gap-2">
+            <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} className="px-2 py-1 text-xs border border-stone-200 rounded bg-white">
+              <option value="">Todas las semanas</option>
+              {semanas.map(s=><option key={s} value={s}>Semana {s}</option>)}
+            </select>
+            <select value={filterFrente} onChange={e=>setFilterFrente(e.target.value)} className="px-2 py-1 text-xs border border-stone-200 rounded bg-white">
+              <option value="">Todos los frentes</option>
+              {Object.entries(FRENTE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+        {filtered.length === 0
+          ? <div className="p-8 text-center text-stone-500 text-sm"><HardHat className="w-10 h-10 mx-auto mb-2 text-stone-300"/>No hay registros. Usa "Registrar día" para empezar.</div>
+          : <div className="overflow-x-auto"><table className="w-full text-xs">
+              <thead><tr className="bg-stone-50 border-b border-stone-200">
+                {['Fecha','Sem.','Frente','Partida','Peón','Ofic.','Oper.','HH','Costo est.','Obs.',''].map(h=>(
+                  <th key={h} className={`py-2 px-3 text-[10px] font-semibold text-stone-600 uppercase tracking-wider ${['Peón','Ofic.','Oper.','HH','Costo est.'].includes(h)?'text-right':'text-left'}`}>{h}</th>
                 ))}
+              </tr></thead>
+              <tbody>
+                {filtered.map(r => {
+                  const pkg = (packages||[]).find(p=>p.id===r.partida);
+                  return (
+                    <tr key={r.id} className="border-b border-stone-100 hover:bg-stone-50">
+                      <td className="py-2 px-3 font-mono">{fmtDate(r.fecha)}</td>
+                      <td className="py-2 px-3 font-mono">S{r.semana}</td>
+                      <td className="py-2 px-3">{FRENTE_LABELS[r.frente]||r.frente}</td>
+                      <td className="py-2 px-3 max-w-[150px]">
+                        {pkg ? <p className="truncate text-stone-700">{pkg.item} {pkg.desc.slice(0,30)}</p> : <span className="text-stone-400">—</span>}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-orange-700">{r.peon||0}</td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{r.oficial||0}</td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-emerald-700">{r.operario||0}</td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-stone-900">{calcHH(r).toFixed(0)}</td>
+                      <td className="py-2 px-3 text-right font-mono text-emerald-700">S/. {calcCosto(r).toFixed(2)}</td>
+                      <td className="py-2 px-3 text-stone-500 max-w-[100px] truncate">{r.obs||'—'}</td>
+                      <td className="py-2 px-2"><button onClick={()=>{if(confirm('¿Eliminar?'))setMoRegistros(prev=>prev.filter(x=>x.id!==r.id))}} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table></div>}
       </Card>
@@ -3206,7 +3373,7 @@ export default function App() {
         {activeTab === 'valorGanado' && <ValorGanadoView acMonthly={acMonthly} setAcMonthly={setAcMonthly} />}
         {activeTab === 'lookahead' && <LookaheadView packages={packages} programacion={programacion} restrictions={restrictions} totalWeeks={PROJECT.totalWeeks} />}
         {activeTab === 'informe' && <InformeSemanalView packages={packages} weeklyPlans={weeklyPlans} ppcHistory={ppcHistory} restrictions={restrictions} programacion={programacion} />}
-        {activeTab === 'mo' && <ManoObraView moRegistros={moRegistros} setMoRegistros={setMoRegistros} />}
+        {activeTab === 'mo' && <ManoObraView moRegistros={moRegistros} setMoRegistros={setMoRegistros} packages={packages} />}
         {activeTab === 'produccion' && <ProduccionView packages={packages} programacion={programacion} />}
         {activeTab === 'rfis' && <RFIsView rfis={rfis} setRfis={setRfis} />}
 
