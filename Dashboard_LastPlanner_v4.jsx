@@ -760,6 +760,49 @@ const FRENTE_LABELS = {
   IISS: 'Inst. Sanitarias', IIEE: 'Inst. Eléctricas', CCTV: 'Inst. Especiales (CCTV)',
 };
 
+// ── ROLES Y CONTROL DE ACCESO ─────────────────────────────────────────────────
+// Cambia los PINs aquí antes de desplegar. Máx. 6 dígitos.
+const ROLES = {
+  residente: {
+    label: 'Residente de Obra', desc: 'Control total del dashboard',
+    pin: '1111',
+    color: 'bg-stone-900 text-white', badge: 'RESIDENTE',
+    tabs: ['resumen','trenes','actividades','programacion','lookahead','control','restricciones','ppc','valorGanado','mo','produccion','rfis','informe'],
+    canWrite: true, canDelete: true, canReset: true,
+  },
+  asistente_tec: {
+    label: 'Asistente Técnico', desc: 'Programación, MO y avance físico',
+    pin: '2222',
+    color: 'bg-blue-700 text-white', badge: 'ASIST. TÉC.',
+    tabs: ['resumen','trenes','actividades','programacion','lookahead','mo','produccion','valorGanado'],
+    canWrite: true, canDelete: false, canReset: false,
+  },
+  asistente_cal: {
+    label: 'Asistente de Calidad', desc: 'Control semanal, restricciones y RFIs',
+    pin: '3333',
+    color: 'bg-emerald-700 text-white', badge: 'ASIST. CAL.',
+    tabs: ['resumen','control','restricciones','ppc','rfis','lookahead','informe'],
+    canWrite: true, canDelete: false, canReset: false,
+  },
+  practicante: {
+    label: 'Practicante', desc: 'Registro de MO y control básico',
+    pin: '4444',
+    color: 'bg-amber-600 text-white', badge: 'PRACTICANTE',
+    tabs: ['resumen','mo','control','restricciones','lookahead'],
+    canWrite: true, canDelete: false, canReset: false,
+  },
+  supervisor: {
+    label: 'Supervisor', desc: 'Solo lectura — seguimiento y monitoreo',
+    pin: '0000',
+    color: 'bg-red-700 text-white', badge: 'SUPERVISOR',
+    tabs: ['resumen','trenes','actividades','programacion','lookahead','control','restricciones','ppc','valorGanado','mo','produccion','rfis','informe'],
+    canWrite: false, canDelete: false, canReset: false,
+  },
+};
+
+const PermsContext = React.createContext({ canWrite: true, canDelete: true, canReset: false });
+const usePerms = () => React.useContext(PermsContext);
+
 const TrenesView = ({ packages, setPackages }) => {
   const [expandedTren, setExpandedTren] = useState(null);
   const [frenteFilter, setFrenteFilter] = useState('TODOS');
@@ -914,6 +957,7 @@ const TrenesView = ({ packages, setPackages }) => {
 // ============================================================================
 
 const ActividadesView = ({ packages, setPackages }) => {
+  const { canWrite } = usePerms();
   const [search, setSearch] = useState('');
   const [frenteFilter, setFrenteFilter] = useState('TODOS');
   const [trenFilter, setTrenFilter] = useState('TODOS');
@@ -1009,7 +1053,7 @@ const ActividadesView = ({ packages, setPackages }) => {
             <option value="ROJO">ROJO</option>
           </select>
           <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-stone-200 rounded-md hover:bg-stone-50 text-stone-600" title="Descargar CSV plantilla"><Download className="w-4 h-4" />CSV</button>
-          <label className="flex items-center gap-1.5 px-3 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-700 cursor-pointer" title="Importar metrados desde CSV"><Upload className="w-4 h-4" />Importar<input type="file" accept=".csv" onChange={importCSV} className="hidden" /></label>
+          {canWrite && <label className="flex items-center gap-1.5 px-3 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-700 cursor-pointer" title="Importar metrados desde CSV"><Upload className="w-4 h-4" />Importar<input type="file" accept=".csv" onChange={importCSV} className="hidden" /></label>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -1051,9 +1095,10 @@ const ActividadesView = ({ packages, setPackages }) => {
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-stone-700">{formatCurrency(p.costo)}</td>
                     <td className="py-2.5 px-3 text-center">
-                      <select value={p.status} onChange={(e) => toggleStatus(p.id, e.target.value)}
-                        className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-transparent focus:outline-none cursor-pointer"
-                        style={{ backgroundColor: COLORS[p.status.toLowerCase()].bg, color: COLORS[p.status.toLowerCase()].text, borderColor: COLORS[p.status.toLowerCase()].border }}>
+                      <select value={p.status} onChange={(e) => canWrite && toggleStatus(p.id, e.target.value)}
+                        disabled={!canWrite}
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-transparent focus:outline-none"
+                        style={{ backgroundColor: COLORS[p.status.toLowerCase()].bg, color: COLORS[p.status.toLowerCase()].text, borderColor: COLORS[p.status.toLowerCase()].border, cursor: canWrite ? 'pointer' : 'default' }}>
                         <option value="VERDE">VERDE</option>
                         <option value="AMARILLO">AMARILLO</option>
                         <option value="ROJO">ROJO</option>
@@ -1080,6 +1125,7 @@ const TramosView = TrenesView;
 // ============================================================================
 
 const ProgramacionView = ({ packages, setPackages, programacion, setProgramacion, ppcHistory, setPpcHistory, restrictions = [] }) => {
+  const { canWrite } = usePerms();
   const [view, setView] = useState('hoja'); // 'cronograma' | 'hoja'
   const [selectedWeek, setSelectedWeek] = useState(CURRENT_WEEK);
   const [frenteFilter, setFrenteFilter] = useState('TODOS');
@@ -1242,10 +1288,10 @@ const ProgramacionView = ({ packages, setPackages, programacion, setProgramacion
                   <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded uppercase tracking-wider">Semana actual</span>
                 )}
               </div>
-              <button onClick={guardarPPC}
+              {canWrite && <button onClick={guardarPPC}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-800">
                 <CheckCircle2 className="w-4 h-4" />Guardar PPC en histórico
-              </button>
+              </button>}
             </div>
           </Card>
 
@@ -1323,14 +1369,16 @@ const ProgramacionView = ({ packages, setPackages, programacion, setProgramacion
                         <td className="py-2 px-2 text-right font-mono tabular-nums text-[11px] font-semibold text-stone-700">{saldo.toFixed(1)}</td>
                         <td className="py-1.5 px-2 bg-blue-50/40">
                           <input type="number" value={cell.prog || ''} placeholder="0"
-                            onChange={(e) => setCell(p.id, selectedWeek, 'prog', e.target.value)}
-                            className="w-full text-right font-mono tabular-nums text-xs bg-white border border-blue-200 rounded px-1.5 py-1 text-stone-900 focus:outline-none focus:border-blue-400"
+                            onChange={(e) => canWrite && setCell(p.id, selectedWeek, 'prog', e.target.value)}
+                            readOnly={!canWrite}
+                            className={`w-full text-right font-mono tabular-nums text-xs border border-blue-200 rounded px-1.5 py-1 text-stone-900 focus:outline-none focus:border-blue-400 ${canWrite ? 'bg-white' : 'bg-stone-50 cursor-default'}`}
                             step="any" min="0" max={saldo} />
                         </td>
                         <td className="py-1.5 px-2 bg-emerald-50/40">
                           <input type="number" value={cell.ejec == null ? '' : cell.ejec} placeholder="—"
-                            onChange={(e) => setCell(p.id, selectedWeek, 'ejec', e.target.value)}
-                            className="w-full text-right font-mono tabular-nums text-xs bg-white border border-emerald-200 rounded px-1.5 py-1 text-stone-900 focus:outline-none focus:border-emerald-400"
+                            onChange={(e) => canWrite && setCell(p.id, selectedWeek, 'ejec', e.target.value)}
+                            readOnly={!canWrite}
+                            className={`w-full text-right font-mono tabular-nums text-xs border border-emerald-200 rounded px-1.5 py-1 text-stone-900 focus:outline-none focus:border-emerald-400 ${canWrite ? 'bg-white' : 'bg-stone-50 cursor-default'}`}
                             step="any" min="0" max={saldo} />
                         </td>
                         <td className="py-2 px-2 text-right">
@@ -1453,6 +1501,7 @@ const ProgramacionView = ({ packages, setPackages, programacion, setProgramacion
 // ============================================================================
 
 const ControlSemanalView = ({ packages, weeklyPlans, setWeeklyPlans, ppcHistory, setPpcHistory }) => {
+  const { canWrite } = usePerms();
   const lockedWeeks = useMemo(() => Object.values(weeklyPlans).filter(p => p.status === 'LOCKED').sort((a, b) => a.weekNum - b.weekNum), [weeklyPlans]);
   const closedWeeks = useMemo(() => Object.values(weeklyPlans).filter(p => p.status === 'CLOSED').sort((a, b) => a.weekNum - b.weekNum), [weeklyPlans]);
 
@@ -1612,7 +1661,7 @@ const ControlSemanalView = ({ packages, weeklyPlans, setWeeklyPlans, ppcHistory,
               {currentPlan.commitments.map(c => {
                 const pkg = packages.find(p => p.id === c.packageId);
                 if (!pkg) return null;
-                const isReadOnly = currentPlan.status === 'CLOSED';
+                const isReadOnly = currentPlan.status === 'CLOSED' || !canWrite;
                 return (
                   <div key={c.id} className="p-4 hover:bg-stone-50/50">
                     <div className="flex items-start gap-3">
@@ -1682,10 +1731,10 @@ const ControlSemanalView = ({ packages, weeklyPlans, setWeeklyPlans, ppcHistory,
                       <span>Faltan {total - cumplidos - noCumplidos} compromisos por marcar</span>
                     )}
                   </div>
-                  <button onClick={closeWeek} disabled={!allMarked || cncIncomplete.length > 0}
+                  {canWrite && <button onClick={closeWeek} disabled={!allMarked || cncIncomplete.length > 0}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed">
                     <CheckCircle2 className="w-4 h-4" />Cerrar control y registrar PPC
-                  </button>
+                  </button>}
                 </div>
               </div>
             )}
@@ -1695,10 +1744,10 @@ const ControlSemanalView = ({ packages, weeklyPlans, setWeeklyPlans, ppcHistory,
           <Card noPad>
             <div className="p-4 border-b border-stone-200 flex items-center justify-between">
               <SectionTitle icon={Camera} sub={`Registro fotográfico de avance — Semana ${selectedWeek}`}>Fotos de Avance</SectionTitle>
-              <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-700 cursor-pointer no-print">
+              {canWrite && <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-700 cursor-pointer no-print">
                 <Camera className="w-4 h-4" />Agregar fotos
                 <input type="file" accept="image/*" multiple onChange={(e) => addPhotos(e.target.files)} className="hidden" />
-              </label>
+              </label>}
             </div>
             {(currentPlan?.fotos || []).length === 0 ? (
               <div
@@ -1759,6 +1808,7 @@ const ControlSemanalView = ({ packages, weeklyPlans, setWeeklyPlans, ppcHistory,
 // ============================================================================
 
 const RestrictionsView = ({ restrictions, setRestrictions }) => {
+  const { canWrite, canDelete } = usePerms();
   const [filterEstado, setFilterEstado] = useState('TODAS');
   const [filterCat, setFilterCat] = useState('TODAS');
   const [filterImpact, setFilterImpact] = useState('TODOS');
@@ -1837,9 +1887,9 @@ const RestrictionsView = ({ restrictions, setRestrictions }) => {
             <option value="TODAS">Todas las categorías</option>
             {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button onClick={openAddModal} className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-stone-800 transition-colors">
+          {canWrite && <button onClick={openAddModal} className="inline-flex items-center gap-1.5 bg-stone-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-stone-800 transition-colors">
             <Plus className="w-4 h-4" /> Nueva
-          </button>
+          </button>}
         </div>
 
         <div className="overflow-x-auto">
@@ -1886,9 +1936,9 @@ const RestrictionsView = ({ restrictions, setRestrictions }) => {
                     </td>
                     <td className="py-3 px-3 text-center">
                       <div className="inline-flex items-center gap-1">
-                        {r.estado !== 'LEVANTADA' && <button onClick={() => markAsLifted(r.id)} className="p-1.5 hover:bg-emerald-50 rounded text-emerald-600" title="Marcar como levantada"><Check className="w-3.5 h-3.5" /></button>}
-                        <button onClick={() => openEditModal(r)} className="p-1.5 hover:bg-stone-100 rounded text-stone-600" title="Editar"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => deleteRestriction(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-600" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+                        {canWrite && r.estado !== 'LEVANTADA' && <button onClick={() => markAsLifted(r.id)} className="p-1.5 hover:bg-emerald-50 rounded text-emerald-600" title="Marcar como levantada"><Check className="w-3.5 h-3.5" /></button>}
+                        {canWrite && <button onClick={() => openEditModal(r)} className="p-1.5 hover:bg-stone-100 rounded text-stone-600" title="Editar"><Edit2 className="w-3.5 h-3.5" /></button>}
+                        {canDelete && <button onClick={() => deleteRestriction(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-600" title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>}
                       </div>
                     </td>
                   </tr>
@@ -2750,6 +2800,7 @@ const InformeSemanalView = ({ packages, weeklyPlans, ppcHistory, restrictions, p
 const TARIFAS_MO = { peon: 68.90, oficial: 83.30, operario: 96.10 };
 
 const ManoObraView = ({ moRegistros, setMoRegistros, packages }) => {
+  const { canWrite, canDelete } = usePerms();
   const emptyForm = { fecha: TODAY, semana: CURRENT_WEEK, frente: 'ESTRUCTURAS', partida: '', horas: 8, peon: 0, oficial: 0, operario: 0, obs: '' };
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
@@ -2831,9 +2882,9 @@ const ManoObraView = ({ moRegistros, setMoRegistros, packages }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <SectionTitle icon={HardHat} sub="Registro diario por categoría, frente y partida — Administración Directa">Control de Mano de Obra</SectionTitle>
-        <button onClick={()=>setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
+        {canWrite && <button onClick={()=>setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
           <Plus className="w-4 h-4"/>{showForm?'Cancelar':'Registrar día'}
-        </button>
+        </button>}
       </div>
 
       {showForm && (
@@ -3009,7 +3060,7 @@ const ManoObraView = ({ moRegistros, setMoRegistros, packages }) => {
                       <td className="py-2 px-3 text-right font-mono font-bold text-stone-900">{calcHH(r).toFixed(0)}</td>
                       <td className="py-2 px-3 text-right font-mono text-emerald-700">S/. {calcCosto(r).toFixed(2)}</td>
                       <td className="py-2 px-3 text-stone-500 max-w-[100px] truncate">{r.obs||'—'}</td>
-                      <td className="py-2 px-2"><button onClick={()=>{if(confirm('¿Eliminar?'))setMoRegistros(prev=>prev.filter(x=>x.id!==r.id))}} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button></td>
+                      <td className="py-2 px-2">{canDelete && <button onClick={()=>{if(confirm('¿Eliminar?'))setMoRegistros(prev=>prev.filter(x=>x.id!==r.id))}} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>}</td>
                     </tr>
                   );
                 })}
@@ -3090,6 +3141,7 @@ const ProduccionView = ({ packages, programacion }) => {
 // RFIs / CONSULTAS DDC VIEW
 // ============================================================================
 const RFIsView = ({ rfis, setRfis }) => {
+  const { canWrite, canDelete } = usePerms();
   const emptyForm = { numero:'', fecha:TODAY, asunto:'', para:'Proyectista', de:'Residente', estado:'PENDIENTE', fechaRespuesta:'', respuesta:'', impacto:'Medio', relacionado:'' };
   const [form, setForm] = useState(emptyForm);
   const [modalOpen, setModalOpen] = useState(false);
@@ -3122,9 +3174,9 @@ const RFIsView = ({ rfis, setRfis }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <SectionTitle icon={MessageSquare} sub="Seguimiento de consultas al proyectista, DDC Cusco y entidades externas">RFIs / Consultas DDC</SectionTitle>
-        <button onClick={()=>{setForm(emptyForm);setEditId(null);setModalOpen(true)}} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
+        {canWrite && <button onClick={()=>{setForm(emptyForm);setEditId(null);setModalOpen(true)}} className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-md text-sm font-semibold hover:bg-stone-700">
           <Plus className="w-4 h-4"/>Nuevo RFI
-        </button>
+        </button>}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard label="Pendientes" value={stats.pendientes} sub="sin respuesta" accent="rojo" icon={AlertCircle}/>
@@ -3181,8 +3233,8 @@ const RFIsView = ({ rfis, setRfis }) => {
                     <td className="py-2.5 px-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.estado==='PENDIENTE'?'bg-red-100 text-red-700':r.estado==='EN PROCESO'?'bg-amber-100 text-amber-700':r.estado==='RESPONDIDA'?'bg-blue-100 text-blue-700':'bg-emerald-100 text-emerald-700'}`}>{r.estado}</span></td>
                     <td className="py-2.5 px-3 font-mono">{r.fechaRespuesta?fmtDate(r.fechaRespuesta):'—'}</td>
                     <td className="py-2.5 px-3 flex items-center gap-1">
-                      <button onClick={()=>editRfi(r)} className="text-stone-300 hover:text-stone-700"><Edit2 className="w-3.5 h-3.5"/></button>
-                      <button onClick={()=>deleteRfi(r.id)} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>
+                      {canWrite && <button onClick={()=>editRfi(r)} className="text-stone-300 hover:text-stone-700"><Edit2 className="w-3.5 h-3.5"/></button>}
+                      {canDelete && <button onClick={()=>deleteRfi(r.id)} className="text-stone-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>}
                     </td>
                   </tr>;
                 })}
@@ -3194,10 +3246,87 @@ const RFIsView = ({ rfis, setRfis }) => {
 };
 
 // ============================================================================
+// LOGIN SCREEN
+// ============================================================================
+const LoginScreen = ({ onLogin }) => {
+  const [selectedRole, setSelectedRole] = useState('');
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [showPin, setShowPin] = useState(false);
+
+  const handleLogin = () => {
+    if (!selectedRole) { setError('Selecciona tu rol'); return; }
+    if (pin !== ROLES[selectedRole].pin) { setError('PIN incorrecto'); setPin(''); return; }
+    sessionStorage.setItem('lp_role', selectedRole);
+    onLogin(selectedRole);
+  };
+
+  const handleKey = (e) => { if (e.key === 'Enter') handleLogin(); };
+
+  return (
+    <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4" style={{ fontFamily: '"Manrope", -apple-system, sans-serif' }}>
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <Hammer className="w-8 h-8 text-stone-900" />
+          </div>
+          <p className="text-stone-500 text-[10px] uppercase tracking-widest font-semibold">Municipalidad Provincial del Cusco</p>
+          <h1 className="text-white text-lg font-bold mt-1 font-display">{PROJECT.name.toUpperCase()}</h1>
+          <p className="text-stone-600 text-xs mt-0.5">Last Planner Dashboard · Meta {PROJECT.meta}</p>
+        </div>
+
+        <div className="bg-stone-900 rounded-2xl p-5 space-y-3">
+          <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider">Selecciona tu rol</p>
+          <div className="space-y-1.5">
+            {Object.entries(ROLES).map(([key, role]) => (
+              <button key={key} onClick={() => { setSelectedRole(key); setError(''); setPin(''); }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl border transition-all text-left ${selectedRole === key ? 'border-white/30 bg-white/10' : 'border-stone-800 hover:border-stone-600'}`}>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${role.color}`}>
+                  {role.badge.slice(0,2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold truncate ${selectedRole === key ? 'text-white' : 'text-stone-300'}`}>{role.label}</p>
+                  <p className="text-[10px] text-stone-600 truncate">{role.desc}</p>
+                </div>
+                {selectedRole === key && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+              </button>
+            ))}
+          </div>
+
+          {selectedRole && (
+            <div className="pt-1">
+              <label className="text-stone-500 text-[10px] font-semibold uppercase tracking-wider">PIN de acceso</label>
+              <input
+                type={showPin ? 'text' : 'password'}
+                value={pin}
+                onChange={e => { setPin(e.target.value.slice(0,6)); setError(''); }}
+                onKeyDown={handleKey}
+                maxLength={6}
+                placeholder="••••"
+                autoFocus
+                className="w-full mt-1.5 px-4 py-3 bg-stone-800 border border-stone-700 rounded-xl text-white text-center text-xl tracking-[0.4em] font-mono focus:outline-none focus:border-stone-500 placeholder-stone-700"
+              />
+              {error && <p className="text-red-400 text-xs mt-1.5 text-center">{error}</p>}
+              <button onClick={handleLogin}
+                className="w-full mt-2.5 py-3 bg-white text-stone-900 rounded-xl font-bold text-sm hover:bg-stone-100 transition-colors">
+                Ingresar al Dashboard
+              </button>
+            </div>
+          )}
+        </div>
+        <p className="text-stone-700 text-center text-[10px] mt-4">Los datos se guardan localmente en este navegador</p>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // MAIN APP
 // ============================================================================
 
 export default function App() {
+  const [role, setRole] = useState(() => sessionStorage.getItem('lp_role') || null);
   const [activeTab, setActiveTab] = useState('resumen');
   const [packages, setPackages] = useState(INITIAL_PACKAGES);
   const [restrictions, setRestrictions] = useState(INITIAL_RESTRICTIONS);
@@ -3244,6 +3373,13 @@ export default function App() {
   useEffect(() => { if (loaded) window.storage?.set('moRegistros', JSON.stringify(moRegistros)).catch(() => {}); }, [moRegistros, loaded]);
   useEffect(() => { if (loaded) window.storage?.set('rfis', JSON.stringify(rfis)).catch(() => {}); }, [rfis, loaded]);
 
+  if (!role) return <LoginScreen onLogin={r => { setRole(r); setActiveTab('resumen'); }} />;
+
+  const roleConfig = ROLES[role];
+  const perms = { canWrite: roleConfig.canWrite, canDelete: roleConfig.canDelete, canReset: roleConfig.canReset };
+
+  const handleLogout = () => { sessionStorage.removeItem('lp_role'); setRole(null); };
+
   const resetData = async () => {
     if (confirm('¿Restablecer todos los datos a los iniciales? Esto borrará tus cambios.')) {
       setPackages(INITIAL_PACKAGES); setRestrictions(INITIAL_RESTRICTIONS); setPpcHistory(INITIAL_PPC); setWeeklyPlans(INITIAL_WEEKLY_PLANS); setAcMonthly(INITIAL_AC_MONTHLY); setProgramacion({});
@@ -3274,7 +3410,7 @@ export default function App() {
     return alerts.filter(a => !dismissedAlerts.has(a.id));
   }, [ppcHistory, restrictions, dismissedAlerts]);
 
-  const tabs = [
+  const allTabs = [
     { id: 'resumen', label: 'Resumen', icon: BarChart3 },
     { id: 'trenes', label: 'Trenes', icon: GitCommit },
     { id: 'actividades', label: 'Actividades', icon: Layers },
@@ -3289,8 +3425,10 @@ export default function App() {
     { id: 'rfis', label: 'RFIs / DDC', icon: MessageSquare },
     { id: 'informe', label: 'Informe', icon: FileText },
   ];
+  const tabs = allTabs.filter(t => roleConfig.tabs.includes(t.id));
 
   return (
+    <PermsContext.Provider value={perms}>
     <div className="min-h-screen bg-stone-50" style={{ fontFamily: '"Manrope", -apple-system, sans-serif' }}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Archivo+Narrow:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -3320,11 +3458,13 @@ export default function App() {
                 <h1 className="text-base font-bold text-stone-900 -mt-0.5 font-display tracking-wide">{PROJECT.name.toUpperCase()}</h1>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-5 text-xs">
+            <div className="hidden sm:flex items-center gap-4 text-xs">
               <div className="text-right"><p className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold">Semana actual</p><p className="font-mono font-bold text-stone-900">{CURRENT_WEEK} / {PROJECT.totalWeeks}</p></div>
               <div className="text-right"><p className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold">Hoy</p><p className="font-mono font-bold text-stone-900">{fmtFullDate(TODAY)}</p></div>
+              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider ${roleConfig.color}`}>{roleConfig.badge}</span>
               <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-stone-900 text-white rounded hover:bg-stone-700 no-print" title="Exportar a PDF"><Printer className="w-3.5 h-3.5" />PDF</button>
-              <button onClick={resetData} className="text-stone-400 hover:text-stone-700 p-1.5 no-print" title="Restablecer datos iniciales"><RotateCcw className="w-4 h-4" /></button>
+              {perms.canReset && <button onClick={resetData} className="text-stone-400 hover:text-stone-700 p-1.5 no-print" title="Restablecer datos iniciales"><RotateCcw className="w-4 h-4" /></button>}
+              <button onClick={handleLogout} className="text-stone-400 hover:text-red-600 p-1.5 no-print" title="Cerrar sesión"><X className="w-4 h-4" /></button>
             </div>
           </div>
 
@@ -3383,5 +3523,6 @@ export default function App() {
         </footer>
       </main>
     </div>
+    </PermsContext.Provider>
   );
 }
